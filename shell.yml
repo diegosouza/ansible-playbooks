@@ -3,34 +3,12 @@
 - hosts: localhost
 
   vars:
-    pamac_conf_file: /etc/pamac.conf
     default_shell: zsh
 
   pre_tasks:
 
     - name: ensure pamac is installed
       pacman: name=pamac state=present
-
-    - name: "ensure EnableAUR in {{pamac_conf_file}}"
-      replace:
-        path: /etc/pamac.conf
-        regexp: "^#EnableAUR$"
-        replace: "EnableAUR"
-      become: true
-
-    - name: "ensure CheckAURUpdates in {{pamac_conf_file}}"
-      replace:
-        path: /etc/pamac.conf
-        regexp: "^#CheckAURUpdates$"
-        replace: "CheckAURUpdates"
-      become: true
-
-    - name: "ensure CheckAURVCSUpdates in {{pamac_conf_file}}"
-      replace:
-        path: /etc/pamac.conf
-        regexp: "^#CheckAURVCSUpdates$"
-        replace: "CheckAURVCSUpdates"
-      become: true
 
   tasks:
 

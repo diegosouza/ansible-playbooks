@@ -10,6 +10,13 @@
     - name: ensure pamac is installed
       pacman: name=pamac state=present
 
+    - name: install curl for oh-my-zsh
+      shell: "yes | pamac install curl"
+      register: command_result
+      failed_when: command_result.rc != 0
+      changed_when: "'successfully' in command_result.stdout"
+      become: true
+
   tasks:
 
     - name: install shell related packages
@@ -27,3 +34,15 @@
         name: "{{ansible_env.USER}}"
         shell: "/usr/bin/{{default_shell}}"
       become: true
+
+    - name: install oh-my-zsh
+      shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+
+    - name: download personal dotfiles
+      get_url:
+        url: "https://raw.githubusercontent.com/diegosouza/dotfiles/master/{{item}}"
+        dest: "~/{{item}}"
+        force: yes
+      with_items:
+        - ".zprofile"
+        - ".zshrc"

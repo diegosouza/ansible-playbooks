@@ -9,6 +9,7 @@
 
     - name: ensure pamac is installed
       pacman: name=pamac state=present
+      tags: [packages]
 
     - name: install curl for oh-my-zsh
       shell: "yes | pamac install curl"
@@ -16,18 +17,22 @@
       failed_when: command_result.rc != 0
       changed_when: "'successfully' in command_result.stdout"
       become: true
+      tags: [packages]
 
   tasks:
 
-    - name: install shell related packages
+    - name: install shell and cli related packages
       shell: "yes | pamac install {{item}}"
       with_items:
-        - tilix
         - zsh
+        - tilix
+        - ripgrep
+        - the_silver_searcher
       register: command_result
       failed_when: command_result.rc != 0
       changed_when: "'successfully' in command_result.stdout"
       become: true
+      tags: [packages]
 
     - name: define the default shell
       user:
@@ -37,6 +42,7 @@
 
     - name: install oh-my-zsh
       shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+      tags: [oh-my-zsh]
 
     - name: download personal dotfiles
       get_url:
@@ -46,3 +52,4 @@
       with_items:
         - ".zprofile"
         - ".zshrc"
+      tags: [dotfiles]

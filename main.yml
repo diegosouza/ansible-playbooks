@@ -1,12 +1,44 @@
 ---
 
-- hosts: "10.10.10.6"
+- hosts: localhost
+  connection: local
+
+  vars:
+    asdf_vm_default_path: /opt/asdf-vm
+    default_shell: bash
+    pamac_conf_file: /etc/pamac.conf
+
+  vars_prompt:
+    - name: "username"
+      prompt: "What's the user?"
+      private: false
 
   pre_tasks:
-    - name: pamac and AUR configs
-      include_tasks: pamac.yml
-      vars:
-        pamac_conf_file: /etc/pamac.conf
+
+    - name: ensure pamac is installed
+      pacman: name=pamac state=present
+      become: true
+
+    - name: "ensure EnableAUR in {{ pamac_conf_file }}"
+      replace:
+        path: "{{ pamac_conf_file }}"
+        regexp: "^#EnableAUR$"
+        replace: "EnableAUR"
+      become: true
+
+    - name: "ensure CheckAURUpdates in {{ pamac_conf_file }}"
+      replace:
+        path: "{{ pamac_conf_file }}"
+        regexp: "^#CheckAURUpdates$"
+        replace: "CheckAURUpdates"
+      become: true
+
+    - name: "ensure CheckAURVCSUpdates in {{ pamac_conf_file }}"
+      replace:
+        path: "{{ pamac_conf_file }}"
+        regexp: "^#CheckAURVCSUpdates$"
+        replace: "CheckAURVCSUpdates"
+      become: true
 
     - name: essential packages for AUR builds
       package:
@@ -19,6 +51,23 @@
 
   tasks:
 
+    - name: install shell and cli related packages
+      package:
+        name:
+          - zsh
+          - fish
+          - tilix
+          - ripgrep
+          - the_silver_searcher
+        state: present
+      become: true
+
+    - name: define the default shell
+      user:
+        name: "{{ username }}"
+        shell: "/bin/{{ default_shell }}"
+      become: true
+
     - ansible.builtin.stat: path=/usr/bin/bash
       register: bash
 
@@ -29,28 +78,50 @@
           [ -r ~/.bashrc-ansible ] && . ~/.bashrc-ansible
       when: bash.stat.exists
 
-
     - ansible.builtin.stat: path=/usr/bin/zsh
       register: zsh
 
     - ansible.builtin.stat: path=/usr/bin/fish
       register: fish
 
-    - name: install asdf
-      include_tasks: asdf.yml
-      vars:
-        asdf_vm_default_path: /opt/asdf-vm
-
-  handlers:
-
-    - name: update shell configs
-      ansible.builtin.debug:
-        msg: "Update shell configs (bash, zsh, fish)"
+    - name: install asdf-vm from AUR
+      command: /usr/bin/pamac install asdf-vm --no-confirm
+      register: result
+      failed_when:
+        - result.rc != 0
+        - result.rc != 2
+      changed_when:
+        - result.rc != 2
+      become: true
       notify:
         - update bash
+
+    - name: asdf symbolic link
+      ansible.builtin.file:
+        src: "{{ asdf_vm_default_path }}/bin/asdf"
+        path: /usr/bin/asdf
+        owner: root
+        group: root
+        state: link
+      become: true
+
+    - name: Flush handlers
+      meta: flush_handlers
+
+    - name: install asdf plugins
+      command: asdf plugin-add python
+      register: result
+      failed_when:
+        - result.rc != 0
+        - result.rc != 2
+      changed_when:
+        - result.rc != 2
+
+  handlers:
 
     - name: update bash
       ansible.builtin.template:
         src: templates/bashrc-ansible.j2
         dest: ~/.bashrc-ansible
       when: bash.stat.exists
+

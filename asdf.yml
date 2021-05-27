@@ -1,0 +1,13 @@
+- name: install asdf-vm from AUR
+  command: /usr/bin/pamac install asdf-vm --no-confirm
+  notify: update shell configs
+  become: true
+
+- name: asdf symbolic link
+  ansible.builtin.file:
+    src: "{{ asdf_vm_default_path }}/bin/asdf" 
+    path: /usr/bin/asdf
+    owner: root
+    group: root
+    state: link
+  become: true

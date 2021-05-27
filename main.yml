@@ -1,0 +1,56 @@
+---
+
+- hosts: "10.10.10.6"
+
+  pre_tasks:
+    - name: pamac and AUR configs
+      include_tasks: pamac.yml
+      vars:
+        pamac_conf_file: /etc/pamac.conf
+
+    - name: essential packages for AUR builds
+      package:
+        name:
+          - fakeroot
+          - binutils
+          - base-devel
+        state: present
+      become: true
+
+  tasks:
+
+    - ansible.builtin.stat: path=/usr/bin/bash
+      register: bash
+
+    - name: ansible managed bashrc customizations
+      blockinfile:
+        path: ~/.bashrc
+        block: |
+          [ -r ~/.bashrc-ansible ] && . ~/.bashrc-ansible
+      when: bash.stat.exists
+
+
+    - ansible.builtin.stat: path=/usr/bin/zsh
+      register: zsh
+
+    - ansible.builtin.stat: path=/usr/bin/fish
+      register: fish
+
+    - name: install asdf
+      include_tasks: asdf.yml
+      vars:
+        asdf_vm_default_path: /opt/asdf-vm
+
+  handlers:
+
+    - name: update shell configs
+      ansible.builtin.debug:
+        msg: "Update shell configs (bash, zsh, fish)"
+      notify:
+        - update bash
+
+    - name: update bash
+      ansible.builtin.template:
+        src: templates/bashrc-ansible.j2
+        dest: ~/.bashrc-ansible
+      when: bash.stat.exists
